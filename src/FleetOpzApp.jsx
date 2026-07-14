@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { C } from "./theme";
+import { C } from "./Theme";
 import { FLEET, ALERTS } from "./data";
 import { Btn, Badge, Modal, Input, Select } from "./components";
 
