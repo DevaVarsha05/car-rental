@@ -276,7 +276,8 @@ export default function FleetOpzApp() {
             const plate = e.target.value;
             const car = fleetData.fleet.find(c => c.plate === plate);
             if (car && !car.targetRate) {
-              alert(`No target rental rate set for ${plate}. Please set a target rate in Fleet before booking this car.`);
+              // No saved target rate for this car — don't block the booking.
+              // Just clear the rate so staff can type it in manually below.
               setNewBookingData({ ...newBookingData, plate, rate: "" });
               return;
             }
