@@ -6,8 +6,8 @@ const Dashboard = ({ fleet, bookings, earnings, expenses, alerts, month, calcula
   const currentMonth = month || "2026-06"; // driven by the month dropdown in the topbar
   const isAllMonths = currentMonth === "all";
 
-  const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06"];
-  const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+  const months = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10", "2026-11", "2026-12"];
+  const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const currentMonthIdx = months.indexOf(currentMonth);
   const currentMonthLabel = isAllMonths ? "YTD" : (currentMonthIdx >= 0 ? monthLabels[currentMonthIdx] : currentMonth);
 
@@ -75,7 +75,7 @@ const Dashboard = ({ fleet, bookings, earnings, expenses, alerts, month, calcula
   // Recent alerts
   const recentAlerts = alerts;
 
-  // Monthly earnings data for chart (Jan-Jun)
+  // Monthly earnings data for chart (Jan-Dec)
   const allEarnings = earnings.filter(e => e.start?.startsWith("2026"));
 
   const monthlyActual = months.map(month => {
@@ -316,32 +316,74 @@ const Dashboard = ({ fleet, bookings, earnings, expenses, alerts, month, calcula
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 16 }}>
         {/* Target vs Actual — per car */}
         <Card>
-          <CardHeader title={`Target vs Actual — ${currentMonthLabel}`} subtitle="Per car rental performance" />
+          <CardHeader
+            title={`Target vs Actual — ${currentMonthLabel}`}
+            subtitle="Per car rental performance"
+            right={
+              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: C.textMuted }}>
+                <div style={{ width: 12, height: 2, background: C.amber, borderRadius: 1 }} />
+                Target
+              </div>
+            }
+          />
           <div style={{ padding: 16, maxHeight: 340, overflowY: "auto" }}>
-            {fleet.map(car => {
-              const carActual = isAllMonths
-                ? earnings.filter(e => e.plate === car.plate).reduce((s, e) => s + (e.total || 0), 0)
-                : earnings.filter(e => e.plate === car.plate && e.start?.startsWith(currentMonth)).reduce((s, e) => s + (e.total || 0), 0);
-              const carTarget = isAllMonths
-                ? months.reduce((sum, m) => sum + calculateCarMonthlyTarget(car.plate, m), 0)
-                : calculateCarMonthlyTarget(car.plate, currentMonth);
-              const pct = carTarget > 0 ? Math.round((carActual / carTarget) * 100) : 0;
-              const color = pct >= 80 ? C.green : pct >= 50 ? C.amber : C.red;
-              return (
-                <div key={car.plate} style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 5 }}>
-                    <div>
-                      <div style={{ ...mono, fontSize: 11, fontWeight: 700, color: C.navy }}>{car.plate}</div>
-                      <div style={{ fontSize: 10, color: C.textMuted }}>{car.model}</div>
+            {(() => {
+              // Compute actual + target for every car first so they can share one
+              // horizontal scale — this is what makes the target tick land at each
+              // car's own target dollar amount (not always the track's right edge),
+              // matching the reference layout where higher-target cars' ticks sit
+              // further along the bar.
+              const rows = fleet.map(car => {
+                const carActual = isAllMonths
+                  ? earnings.filter(e => e.plate === car.plate).reduce((s, e) => s + (e.total || 0), 0)
+                  : earnings.filter(e => e.plate === car.plate && e.start?.startsWith(currentMonth)).reduce((s, e) => s + (e.total || 0), 0);
+                // Target comes straight from the car's own saved target (set when the
+                // car was added, or via "Set Target") — target income = targetRate ×
+                // runningDaysTarget. Never a guess.
+                const hasTarget = !!(car.targetRate && car.runningDaysTarget);
+                const monthlyTarget = hasTarget ? car.targetRate * car.runningDaysTarget : 0;
+                const carTarget = isAllMonths ? monthlyTarget * months.length : monthlyTarget;
+                const pct = carTarget > 0 ? Math.round((carActual / carTarget) * 100) : 0;
+                return { car, carActual, carTarget, hasTarget, pct };
+              });
+              // Shared scale = the largest target or actual across the list, with a
+              // little headroom, so every row's bar/tick is comparable at a glance.
+              const scaleMax = Math.max(1, ...rows.map(r => Math.max(r.carTarget, r.carActual))) * 1.08;
+
+              return rows.map(({ car, hasTarget, carTarget, carActual, pct }) => {
+                const pctColor = pct >= 80 ? C.green : pct >= 50 ? C.amber : C.red;
+                const targetTickPos = hasTarget ? Math.min((carTarget / scaleMax) * 100, 100) : 0;
+                const actualFillPos = hasTarget ? Math.min((carActual / scaleMax) * 100, 100) : 0;
+                return (
+                  <div key={car.plate} style={{ marginBottom: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 5 }}>
+                      <div>
+                        <div style={{ ...mono, fontSize: 11, fontWeight: 700, color: C.navy }}>{car.plate}</div>
+                        <div style={{ fontSize: 10, color: C.textMuted }}>{car.model}</div>
+                      </div>
+                      {hasTarget ? (
+                        pct > 100 ? (
+                          <div style={{ ...mono, fontSize: 12, fontWeight: 700, color: C.green }}>100%+ ✓</div>
+                        ) : (
+                          <div style={{ ...mono, fontSize: 13, fontWeight: 700, color: pctColor }}>{pct}%</div>
+                        )
+                      ) : (
+                        <div style={{ fontSize: 9.5, color: C.amber, fontWeight: 600 }}>⚠ No target</div>
+                      )}
                     </div>
-                    <div style={{ ...mono, fontSize: 13, fontWeight: 700, color }}>{pct}%</div>
+                    <div style={{ position: "relative", height: 7, background: C.bg, borderRadius: 4, overflow: "hidden" }}>
+                      {hasTarget && (
+                        <div style={{ width: `${actualFillPos}%`, height: "100%", background: pctColor, borderRadius: 4 }} />
+                      )}
+                      {/* Target tick — placed at this car's own target amount on the shared scale */}
+                      {hasTarget && (
+                        <div style={{ position: "absolute", top: -1, bottom: -1, left: `${targetTickPos}%`, width: 2, background: C.amber }} />
+                      )}
+                    </div>
                   </div>
-                  <div style={{ height: 7, background: C.bg, borderRadius: 4, overflow: "hidden" }}>
-                    <div style={{ width: `${Math.min(pct, 100)}%`, height: "100%", background: color, borderRadius: 4 }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </Card>
 

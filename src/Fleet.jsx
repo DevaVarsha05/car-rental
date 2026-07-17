@@ -112,19 +112,31 @@ const TargetPanel = ({ car, onSave }) => {
           {options && (
             <div style={{ marginTop: 10 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6, marginBottom: 8 }}>
-                {options.map(o => (
-                  <div key={o.label} onClick={() => setChosen(o)}
-                    style={{
-                      border: `2px solid ${chosen?.label === o.label ? C.teal : C.border}`,
-                      background: chosen?.label === o.label ? C.tealFaint : C.surface,
-                      borderRadius: 8, padding: 8, cursor: "pointer", textAlign: "center",
-                    }}>
-                    <div style={{ fontSize: 8.5, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", marginBottom: 4 }}>{o.label}</div>
-                    <div style={{ ...mono, fontSize: 13, fontWeight: 700, color: C.navy }}>${o.rate}/d</div>
-                    <div style={{ fontSize: 9, color: C.textSec }}>{o.runningDays}d/mo</div>
-                    <div style={{ ...mono, fontSize: 11, fontWeight: 700, color: o.profitPct >= 0 ? C.green : C.red }}>{o.profitPct}%</div>
-                  </div>
-                ))}
+                {options.map(o => {
+                  const isBalanced = /balanced/i.test(o.label);
+                  const isChosen = chosen?.label === o.label;
+                  return (
+                    <div key={o.label} onClick={() => setChosen(o)}
+                      style={{
+                        position: "relative",
+                        border: `2px solid ${isChosen ? C.teal : C.border}`,
+                        background: isChosen ? C.tealFaint : C.surface,
+                        borderRadius: 8, padding: 8, cursor: "pointer", textAlign: "center",
+                      }}>
+                      {isBalanced && (
+                        <div style={{ position: "absolute", top: -9, left: "50%", transform: "translateX(-50%)", background: C.amber, color: "#fff", fontSize: 7.5, fontWeight: 700, padding: "2px 7px", borderRadius: 9, whiteSpace: "nowrap" }}>
+                          ⭐ Recommended
+                        </div>
+                      )}
+                      <div style={{ fontSize: 8.5, fontWeight: 700, color: C.textMuted, textTransform: "uppercase", marginBottom: 4, marginTop: isBalanced ? 5 : 0 }}>{o.label}</div>
+                      <div style={{ ...mono, fontSize: 13, fontWeight: 700, color: C.navy }}>${o.rate}/d</div>
+                      <div style={{ fontSize: 9, color: C.textSec }}>{o.runningDays}d/mo</div>
+                      <div style={{ fontSize: 8, color: C.textMuted, marginTop: 4 }}>Target Income</div>
+                      <div style={{ ...mono, fontSize: 10, fontWeight: 700, color: C.teal }}>{fmt(o.monthlyIncome)}</div>
+                      <div style={{ ...mono, fontSize: 11, fontWeight: 700, color: o.profitPct >= 0 ? C.green : C.red }}>{o.profitPct}%</div>
+                    </div>
+                  );
+                })}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <Btn small onClick={() => { setEditing(false); setOptions(null); setChosen(null); }} style={{ flex: 1 }}>Cancel</Btn>
@@ -265,7 +277,7 @@ const Fleet = ({ fleet = [], onAddFleet, onUpdateCar, onDeleteCar, calculateCarM
               </div>
 
               <div style={{ marginTop: 14 }}><SectionTitle>Performance</SectionTitle></div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                 <div style={{ padding: 10, background: C.bg, borderRadius: 8 }}>
                   <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 2 }}>Total Earnings</div>
                   <div style={{ ...mono, fontSize: 14, fontWeight: 700, color: C.green }}>{fmt(calculateCarMetrics(car.plate).earnings)}</div>
@@ -273,6 +285,24 @@ const Fleet = ({ fleet = [], onAddFleet, onUpdateCar, onDeleteCar, calculateCarM
                 <div style={{ padding: 10, background: C.bg, borderRadius: 8 }}>
                   <div style={{ fontSize: 10, color: C.textMuted, marginBottom: 2 }}>Recovery %</div>
                   <div style={{ ...mono, fontSize: 14, fontWeight: 700, color: C.teal }}>{calculateCarMetrics(car.plate).recoveryPct}%</div>
+                </div>
+              </div>
+
+              {/* Investment recovery bar — same rule as the Dashboard's Target vs Actual:
+                  the track IS the target (100% = fully recovered), the fill is one fixed
+                  "actual" color and is capped so it can never visually pass the target
+                  line, and the target tick sits fixed at the 100% mark. */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5, color: C.textMuted, marginBottom: 4 }}>
+                  <span>Investment Recovery</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ width: 10, height: 2, background: C.amber, borderRadius: 1 }} />
+                    Target
+                  </div>
+                </div>
+                <div style={{ position: "relative", height: 7, background: C.bg, borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ width: `${Math.min(calculateCarMetrics(car.plate).recoveryPct, 100)}%`, height: "100%", background: C.teal, borderRadius: 4 }} />
+                  <div style={{ position: "absolute", top: -1, bottom: -1, right: 0, width: 2, background: C.amber }} />
                 </div>
               </div>
 

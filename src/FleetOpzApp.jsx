@@ -245,6 +245,12 @@ export default function FleetOpzApp() {
               <option value="2026-04">April 2026</option>
               <option value="2026-05">May 2026</option>
               <option value="2026-06">June 2026</option>
+              <option value="2026-07">July 2026</option>
+              <option value="2026-08">August 2026</option>
+              <option value="2026-09">September 2026</option>
+              <option value="2026-10">October 2026</option>
+              <option value="2026-11">November 2026</option>
+              <option value="2026-12">December 2026</option>
             </select>
           </div>
         </header>
@@ -266,7 +272,16 @@ export default function FleetOpzApp() {
         <Select
           label="Car (Plate)"
           value={newBookingData.plate}
-          onChange={(e) => setNewBookingData({ ...newBookingData, plate: e.target.value })}
+          onChange={(e) => {
+            const plate = e.target.value;
+            const car = fleetData.fleet.find(c => c.plate === plate);
+            if (car && !car.targetRate) {
+              alert(`No target rental rate set for ${plate}. Please set a target rate in Fleet before booking this car.`);
+              setNewBookingData({ ...newBookingData, plate, rate: "" });
+              return;
+            }
+            setNewBookingData({ ...newBookingData, plate, rate: car ? car.targetRate : "" });
+          }}
           options={fleetData.fleet.map(c => ({ value: c.plate, label: c.plate }))}
         />
         <Input
@@ -319,8 +334,9 @@ export default function FleetOpzApp() {
           label="Daily Rate ($)"
           type="number"
           value={newBookingData.rate}
-          onChange={(e) => setNewBookingData({ ...newBookingData, rate: e.target.value })}
-          placeholder="e.g., 90"
+          readOnly
+          disabled
+          placeholder="Select a car to auto-fill"
         />
       </Modal>
 

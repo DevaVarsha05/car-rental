@@ -14,6 +14,12 @@ const PlReport = ({ fleet = [], bookings = [], earnings = [], expenses = [], cal
     "2026-04": "April",
     "2026-05": "May",
     "2026-06": "June",
+    "2026-07": "July",
+    "2026-08": "August",
+    "2026-09": "September",
+    "2026-10": "October",
+    "2026-11": "November",
+    "2026-12": "December",
   }[month] || month;
 
   const monthMetrics = calculateMonthlyMetrics(month);
@@ -35,6 +41,12 @@ const PlReport = ({ fleet = [], bookings = [], earnings = [], expenses = [], cal
       <option value="2026-04">April 2026</option>
       <option value="2026-05">May 2026</option>
       <option value="2026-06">June 2026</option>
+      <option value="2026-07">July 2026</option>
+      <option value="2026-08">August 2026</option>
+      <option value="2026-09">September 2026</option>
+      <option value="2026-10">October 2026</option>
+      <option value="2026-11">November 2026</option>
+      <option value="2026-12">December 2026</option>
     </select>
   );
 
