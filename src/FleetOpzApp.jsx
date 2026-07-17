@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { C } from "./theme";
-import { FLEET, ALERTS } from "./data";
 import { Btn, Badge, Modal, Input, Select } from "./components";
+import { useFleetData } from "./useFleetData";
+import AddCarWizard from "./AddCarWizard";
 
 import Dashboard from "./Dashboard";
 import Fleet from "./Fleet";
@@ -15,11 +16,13 @@ import Settings from "./Settings";
 export default function FleetOpzApp() {
   const [active, setActive] = useState("dashboard");
   const [selectedCar, setSelectedCar] = useState("All Cars");
-  const [selectedRange, setSelectedRange] = useState("June 2026");
+  const [selectedRange, setSelectedRange] = useState("2026-06");
   const [showNewBooking, setShowNewBooking] = useState(false);
   const [showNewFleet, setShowNewFleet] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showNewUser, setShowNewUser] = useState(false);
+
+  // Initialize fleet data management hook
+  const fleetData = useFleetData();
 
   const [newBookingData, setNewBookingData] = useState({
     plate: "",
@@ -31,20 +34,6 @@ export default function FleetOpzApp() {
     pickup: "",
     drop: "",
     rate: ""
-  });
-
-  const [newFleetData, setNewFleetData] = useState({
-    plate: "",
-    make: "",
-    model: "",
-    year: "",
-    color: "",
-    purchase: "",
-    insurance: "",
-    reg: "",
-    maint: "",
-    coe: "",
-    status: "Available"
   });
 
   const [newUserData, setNewUserData] = useState({
@@ -60,45 +49,115 @@ export default function FleetOpzApp() {
     { id: "earnings", label: "Earnings", icon: "💰" },
     { id: "expenses", label: "Expenses", icon: "📝" },
     { id: "pl", label: "P&L", icon: "📈" },
-    { id: "alerts", label: "Alerts", icon: "🔔", badge: ALERTS.length },
+    { id: "alerts", label: "Alerts", icon: "🔔", badge: fleetData.alerts.length },
     { id: "settings", label: "Settings", icon: "⚙️" },
   ];
 
   const TAB_CONTENT = {
-    dashboard: <Dashboard selectedCar={selectedCar} selectedRange={selectedRange} />,
-    fleet:     <Fleet onAddFleet={() => setShowNewFleet(true)} />,
-    bookings:  <Booking onNewBooking={() => setShowNewBooking(true)} />,
-    earnings:  <Earning />,
-    expenses:  <Expenses />,
-    pl:        <PlReport />,
-    alerts:    <Alert />,
-    settings:  <Settings onAddUser={() => setShowNewUser(true)} />,
+    dashboard: (
+      <Dashboard
+        fleet={fleetData.fleet}
+        bookings={fleetData.bookings}
+        earnings={fleetData.earnings}
+        expenses={fleetData.expenses}
+        alerts={fleetData.alerts}
+        month={selectedRange}
+        calculateMetrics={fleetData.calculateMetrics}
+        calculateMonthlyMetrics={fleetData.calculateMonthlyMetrics}
+        calculateCarMetrics={fleetData.calculateCarMetrics}
+        calculateMonthlyTarget={fleetData.calculateMonthlyTarget}
+        calculateCarMonthlyTarget={fleetData.calculateCarMonthlyTarget}
+        calculateMonthlyBudget={fleetData.calculateMonthlyBudget}
+        getExpensesByCategory={fleetData.getExpensesByCategory}
+      />
+    ),
+    fleet: (
+      <Fleet
+        fleet={fleetData.fleet}
+        onAddFleet={fleetData.addFleet}  // ✅ CRITICAL FIX: Pass the actual handler that will be called by AddCarWizard
+        onUpdateCar={fleetData.updateFleet}
+        onDeleteCar={fleetData.deleteFleet}
+        calculateCarMetrics={fleetData.calculateCarMetrics}
+      />
+    ),
+    bookings: (
+      <Booking
+        bookings={fleetData.bookings}
+        fleet={fleetData.fleet}
+        onNewBooking={() => setShowNewBooking(true)}
+        onAddBooking={fleetData.addBooking}
+        onUpdateBooking={fleetData.updateBooking}
+        onDeleteBooking={fleetData.deleteBooking}
+      />
+    ),
+    earnings: (
+      <Earning
+        earnings={fleetData.earnings}
+        fleet={fleetData.fleet}
+        bookings={fleetData.bookings}
+        onAddEarning={fleetData.addEarning}
+        onUpdateEarning={fleetData.updateEarning}
+        onDeleteEarning={fleetData.deleteEarning}
+        onLockEarning={fleetData.lockEarning}
+      />
+    ),
+    expenses: (
+      <Expenses
+        expenses={fleetData.expenses}
+        fleet={fleetData.fleet}
+        onAddExpense={fleetData.addExpense}
+        onUpdateExpense={fleetData.updateExpense}
+        onDeleteExpense={fleetData.deleteExpense}
+      />
+    ),
+    pl: (
+      <PlReport
+        fleet={fleetData.fleet}
+        bookings={fleetData.bookings}
+        earnings={fleetData.earnings}
+        expenses={fleetData.expenses}
+        calculateMetrics={fleetData.calculateMetrics}
+        calculateMonthlyMetrics={fleetData.calculateMonthlyMetrics}
+        calculateCarMetrics={fleetData.calculateCarMetrics}
+      />
+    ),
+    alerts: (
+      <Alert
+        alerts={fleetData.alerts}
+        fleet={fleetData.fleet}
+      />
+    ),
+    settings: <Settings onAddUser={() => setShowNewUser(true)} />,
   };
 
   const topbar = {
-    dashboard: { title: "Fleet Dashboard",    sub: "June 2026 · 8 cars active" },
-    fleet:     { title: "Fleet Management",   sub: "8 cars registered" },
-    bookings:  { title: "Bookings",           sub: "Manage customer rentals" },
-    earnings:  { title: "Actual Earnings",    sub: "Locked rental income records" },
-    expenses:  { title: "Expense Management", sub: "Log and track running costs" },
-    pl:        { title: "P&L Reports",        sub: "Profitability by car and fleet" },
-    alerts:    { title: "Alerts",             sub: "3 active · COE & operational" },
-    settings:  { title: "Settings",           sub: "Company profile and users" },
+    dashboard: { title: "Fleet Dashboard", sub: `${fleetData.fleet.length} cars · ${fleetData.bookings.filter(b => b.status === "Active").length} active` },
+    fleet: { title: "Fleet Management", sub: `${fleetData.fleet.length} cars registered` },
+    bookings: { title: "Bookings", sub: `${fleetData.bookings.length} total bookings` },
+    earnings: { title: "Actual Earnings", sub: "Locked rental income records" },
+    expenses: { title: "Expense Management", sub: "Log and track running costs" },
+    pl: { title: "P&L Reports", sub: "Profitability by car and fleet" },
+    alerts: { title: "Alerts", sub: `${fleetData.alerts.length} active alerts` },
+    settings: { title: "Settings", sub: "Company profile and users" },
   };
 
-  const handleNewBookingSubmit = () => {
+  const handleNewBookingSubmit = (e) => {
+    e.preventDefault();
+    if (!newBookingData.plate || !newBookingData.customer || !newBookingData.start || !newBookingData.end || !newBookingData.rate) {
+      alert("Please fill in all required fields");
+      return;
+    }
+    fleetData.addBooking({
+      ...newBookingData,
+      status: "Active",
+    });
     alert(`Booking created for ${newBookingData.customer} on ${newBookingData.plate}`);
     setNewBookingData({ plate: "", customer: "", ic: "", contact: "", start: "", end: "", pickup: "", drop: "", rate: "" });
     setShowNewBooking(false);
   };
 
-  const handleNewFleetSubmit = () => {
-    alert(`New vehicle added: ${newFleetData.make} ${newFleetData.model} (${newFleetData.plate})`);
-    setNewFleetData({ plate: "", make: "", model: "", year: "", color: "", purchase: "", insurance: "", reg: "", maint: "", coe: "", status: "Available" });
-    setShowNewFleet(false);
-  };
-
-  const handleNewUserSubmit = () => {
+  const handleNewUserSubmit = (e) => {
+    e.preventDefault();
     alert(`User added: ${newUserData.name} (${newUserData.role}) — ${newUserData.email}`);
     setNewUserData({ name: "", email: "", role: "Staff" });
     setShowNewUser(false);
@@ -121,8 +180,8 @@ export default function FleetOpzApp() {
         </div>
 
         {/* Nav */}
-        <nav style={{ padding: "16px 0", flex: 1 }}>
-          <div style={{ padding: "10px 20px 4px", fontSize: 9, fontWeight: 600, letterSpacing: 1.8, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Overview</div>
+        <nav style={{ flex: 1, overflowY: "auto", paddingBottom: 10, marginTop: 6 }}>
+          <div style={{ padding: "10px 20px 4px", fontSize: 9, fontWeight: 600, letterSpacing: 1.8, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" }}>Operations</div>
           {NAV.slice(0, 3).map(n => (
             <div key={n.id} onClick={() => setActive(n.id)}
               style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 20px", cursor: "pointer", fontSize: 12.5, fontWeight: active === n.id ? 600 : 400, color: active === n.id ? "#fff" : "rgba(255,255,255,0.55)", background: active === n.id ? "rgba(10,140,126,0.2)" : "transparent", borderLeft: `3px solid ${active === n.id ? C.tealLight : "transparent"}`, transition: "all 0.15s" }}>
@@ -175,62 +234,23 @@ export default function FleetOpzApp() {
             <select value={selectedCar} onChange={e => setSelectedCar(e.target.value)}
               style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 12, color: C.textPri, fontFamily: "inherit", cursor: "pointer", outline: "none" }}>
               <option>All Cars</option>
-              {FLEET.map(c => <option key={c.plate}>{c.plate}</option>)}
+              {fleetData.fleet.map(c => <option key={c.plate}>{c.plate}</option>)}
             </select>
             <select value={selectedRange} onChange={e => setSelectedRange(e.target.value)}
               style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 10px", fontSize: 12, color: C.textPri, fontFamily: "inherit", cursor: "pointer", outline: "none" }}>
-              <option>June 2026</option>
-              <option>May 2026</option>
-              <option>Q2 2026</option>
-              <option>2026 YTD</option>
+              <option value="all">All Months (YTD)</option>
+              <option value="2026-01">January 2026</option>
+              <option value="2026-02">February 2026</option>
+              <option value="2026-03">March 2026</option>
+              <option value="2026-04">April 2026</option>
+              <option value="2026-05">May 2026</option>
+              <option value="2026-06">June 2026</option>
             </select>
-            <Btn primary onClick={() => setShowNewBooking(true)}>＋ New Booking</Btn>
-
-            {/* Bell Icon with Dropdown */}
-            <div style={{ position: "relative" }}>
-              <div style={{ width: 34, height: 34, borderRadius: 8, background: C.bg, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative", fontSize: 15 }}
-                onClick={() => setShowNotifications(!showNotifications)}>
-                🔔
-                <div style={{ position: "absolute", top: 5, right: 5, width: 8, height: 8, borderRadius: "50%", background: C.red, border: `2px solid ${C.surface}` }} />
-              </div>
-
-              {/* Notification Dropdown */}
-              {showNotifications && (
-                <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 8, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", minWidth: 320, zIndex: 999 }}>
-                  <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, fontWeight: 600, fontSize: 13 }}>
-                    Notifications ({ALERTS.length})
-                  </div>
-                  <div style={{ maxHeight: 400, overflowY: "auto" }}>
-                    {ALERTS.map(a => (
-                      <div key={a.id} style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, cursor: "pointer", transition: "background 0.15s", background: "transparent" }}
-                        onMouseEnter={e => e.currentTarget.style.background = C.bg}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                          <div style={{ fontSize: 18 }}>{a.type === "coe" ? "⏰" : "📅"}</div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontSize: 12, color: a.urgent ? C.red : C.textPri, marginBottom: 4 }}>
-                              {a.car}
-                            </div>
-                            <div style={{ fontSize: 12, color: C.textSec, marginBottom: 4 }}>
-                              {a.msg}
-                            </div>
-                            {a.urgent && <Badge color={C.red} bg={C.redFaint}>Urgent</Badge>}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ padding: "12px 16px", textAlign: "center", borderTop: `1px solid ${C.border}` }}>
-                    <Btn secondary small onClick={() => { setActive("alerts"); setShowNotifications(false); }}>View All Alerts</Btn>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </header>
 
         {/* Content */}
-        <div style={{ padding: "20px 24px", flex: 1, overflowY: "auto" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "24px" }}>
           {TAB_CONTENT[active]}
         </div>
       </main>
@@ -238,16 +258,16 @@ export default function FleetOpzApp() {
       {/* NEW BOOKING MODAL */}
       <Modal
         open={showNewBooking}
-        title="Create New Booking"
+        title="New Booking"
         onClose={() => setShowNewBooking(false)}
         onSubmit={handleNewBookingSubmit}
         submitText="Create Booking"
       >
         <Select
-          label="Vehicle (Plate)"
+          label="Car (Plate)"
           value={newBookingData.plate}
           onChange={(e) => setNewBookingData({ ...newBookingData, plate: e.target.value })}
-          options={FLEET.map(f => ({ value: f.plate, label: `${f.plate} - ${f.make} ${f.model}` }))}
+          options={fleetData.fleet.map(c => ({ value: c.plate, label: c.plate }))}
         />
         <Input
           label="Customer Name"
@@ -301,101 +321,6 @@ export default function FleetOpzApp() {
           value={newBookingData.rate}
           onChange={(e) => setNewBookingData({ ...newBookingData, rate: e.target.value })}
           placeholder="e.g., 90"
-        />
-      </Modal>
-
-      {/* NEW FLEET VEHICLE MODAL */}
-      <Modal
-        open={showNewFleet}
-        title="Add New Vehicle"
-        onClose={() => setShowNewFleet(false)}
-        onSubmit={handleNewFleetSubmit}
-        submitText="Add Vehicle"
-      >
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Input
-            label="License Plate"
-            value={newFleetData.plate}
-            onChange={(e) => setNewFleetData({ ...newFleetData, plate: e.target.value })}
-            placeholder="e.g., SBA 1234 X"
-          />
-          <Select
-            label="Status"
-            value={newFleetData.status}
-            onChange={(e) => setNewFleetData({ ...newFleetData, status: e.target.value })}
-            options={[
-              { value: "Available", label: "Available" },
-              { value: "On Rental", label: "On Rental" },
-              { value: "Maintenance", label: "Maintenance" }
-            ]}
-          />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Input
-            label="Make"
-            value={newFleetData.make}
-            onChange={(e) => setNewFleetData({ ...newFleetData, make: e.target.value })}
-            placeholder="e.g., Toyota"
-          />
-          <Input
-            label="Model"
-            value={newFleetData.model}
-            onChange={(e) => setNewFleetData({ ...newFleetData, model: e.target.value })}
-            placeholder="e.g., Corolla"
-          />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Input
-            label="Year"
-            type="number"
-            value={newFleetData.year}
-            onChange={(e) => setNewFleetData({ ...newFleetData, year: e.target.value })}
-            placeholder="e.g., 2022"
-          />
-          <Input
-            label="Color"
-            value={newFleetData.color}
-            onChange={(e) => setNewFleetData({ ...newFleetData, color: e.target.value })}
-            placeholder="e.g., Silver"
-          />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Input
-            label="Purchase Price ($)"
-            type="number"
-            value={newFleetData.purchase}
-            onChange={(e) => setNewFleetData({ ...newFleetData, purchase: e.target.value })}
-            placeholder="e.g., 26000"
-          />
-          <Input
-            label="Insurance ($)"
-            type="number"
-            value={newFleetData.insurance}
-            onChange={(e) => setNewFleetData({ ...newFleetData, insurance: e.target.value })}
-            placeholder="e.g., 1200"
-          />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Input
-            label="Registration ($)"
-            type="number"
-            value={newFleetData.reg}
-            onChange={(e) => setNewFleetData({ ...newFleetData, reg: e.target.value })}
-            placeholder="e.g., 1300"
-          />
-          <Input
-            label="Maintenance ($/month)"
-            type="number"
-            value={newFleetData.maint}
-            onChange={(e) => setNewFleetData({ ...newFleetData, maint: e.target.value })}
-            placeholder="e.g., 7.5"
-          />
-        </div>
-        <Input
-          label="COE Expiry Date"
-          type="date"
-          value={newFleetData.coe}
-          onChange={(e) => setNewFleetData({ ...newFleetData, coe: e.target.value })}
         />
       </Modal>
 

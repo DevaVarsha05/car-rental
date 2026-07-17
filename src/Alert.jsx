@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { C } from "./theme";
-import { ALERTS } from "./data";
 import { Card, CardHeader, Btn, Badge, SectionTitle } from "./components";
 
-const Alert = () => {
+const Alert = ({ alerts = [], fleet = [] }) => {
   const [dismissed, setDismissed] = useState([]);
-  const active = ALERTS.filter(a => !dismissed.includes(a.id));
+  const active = alerts.filter(a => !dismissed.includes(a.id));
+
+  const coeAlerts = active.filter(a => a.type === "coe");
+  const operationalAlerts = active.filter(a => a.type !== "coe");
 
   return (
     <div>
@@ -19,53 +21,65 @@ const Alert = () => {
       {/* COE Alerts */}
       <div style={{ marginBottom: 16 }}>
         <SectionTitle>🔴 COE Expiry Alerts</SectionTitle>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {active.filter(a => a.type === "coe").map(a => (
-            <Card key={a.id}>
-              <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 14, borderLeft: `4px solid ${a.urgent ? C.red : C.amber}` }}>
-                <div style={{ fontSize: 28 }}>⚠️</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{a.plate} — {a.car}</div>
-                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>{a.msg}</div>
-                  <div style={{ marginTop: 6, display: "flex", gap: 8 }}>
-                    <Badge color={a.urgent ? C.red : C.amber} bg={a.urgent ? C.redFaint : C.amberFaint}>
-                      {a.days < 30 ? "🚨 Urgent" : "⚡ Warning"} — {a.days} days remaining
-                    </Badge>
-                    <Badge color={C.navyMid} bg={C.bg}>In-App + Email sent</Badge>
+        {coeAlerts.length === 0 ? (
+          <Card>
+            <div style={{ padding: 24, textAlign: "center", color: C.textMuted, fontSize: 12 }}>No COE alerts</div>
+          </Card>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {coeAlerts.map(a => (
+              <Card key={a.id}>
+                <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 14, borderLeft: `4px solid ${a.urgent ? C.red : C.amber}` }}>
+                  <div style={{ fontSize: 28 }}>⚠️</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{a.plate} — {a.car}</div>
+                    <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>{a.msg}</div>
+                    <div style={{ marginTop: 6, display: "flex", gap: 8 }}>
+                      <Badge color={a.urgent ? C.red : C.amber} bg={a.urgent ? C.redFaint : C.amberFaint}>
+                        {a.urgent ? "🚨 Urgent" : "⚡ Warning"} — {a.days} days remaining
+                      </Badge>
+                      <Badge color={C.navyMid} bg={C.bg}>In-App + Email sent</Badge>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    <Btn small primary>Renew COE</Btn>
+                    <Btn small onClick={() => setDismissed([...dismissed, a.id])}>Dismiss</Btn>
                   </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <Btn small primary>Renew COE</Btn>
-                  <Btn small onClick={() => setDismissed([...dismissed, a.id])}>Dismiss</Btn>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Operational Alerts */}
       <div style={{ marginBottom: 16 }}>
         <SectionTitle>🔔 Operational Alerts</SectionTitle>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {active.filter(a => a.type !== "coe").map(a => (
-            <Card key={a.id}>
-              <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 14, borderLeft: `4px solid ${a.urgent ? C.amber : C.teal}` }}>
-                <div style={{ fontSize: 28 }}>{a.type === "return" ? "🔔" : "📋"}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{a.plate} — {a.car}</div>
-                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>{a.msg}</div>
-                  <div style={{ marginTop: 6 }}>
-                    <Badge color={C.teal} bg={C.tealFaint}>
-                      {a.days === 0 ? "Today" : a.days === 1 ? "Tomorrow" : `In ${a.days} days`}
-                    </Badge>
+        {operationalAlerts.length === 0 ? (
+          <Card>
+            <div style={{ padding: 24, textAlign: "center", color: C.textMuted, fontSize: 12 }}>No operational alerts</div>
+          </Card>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {operationalAlerts.map(a => (
+              <Card key={a.id}>
+                <div style={{ padding: 16, display: "flex", alignItems: "center", gap: 14, borderLeft: `4px solid ${a.urgent ? C.amber : C.teal}` }}>
+                  <div style={{ fontSize: 28 }}>{a.type === "return" ? "🔔" : "📋"}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{a.plate} — {a.car}</div>
+                    <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3 }}>{a.msg}</div>
+                    <div style={{ marginTop: 6 }}>
+                      <Badge color={C.teal} bg={C.tealFaint}>
+                        {a.days === 0 ? "Today" : a.days === 1 ? "Tomorrow" : `In ${a.days} days`}
+                      </Badge>
+                    </div>
                   </div>
+                  <Btn small onClick={() => setDismissed([...dismissed, a.id])}>Dismiss</Btn>
                 </div>
-                <Btn small onClick={() => setDismissed([...dismissed, a.id])}>Dismiss</Btn>
-              </div>
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Notification Settings */}
@@ -74,10 +88,10 @@ const Alert = () => {
         <div style={{ padding: 16 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {[
-              { label: "COE Expiry — Early Warning",  val: "90 days before", channel: "In-App + Email" },
-              { label: "COE Expiry — Urgent Warning",  val: "30 days before", channel: "In-App + Email" },
-              { label: "Booking Starting Today",       val: "Day of start",   channel: "In-App" },
-              { label: "Rental Ending Today",          val: "Day of end",     channel: "In-App" },
+              { label: "COE Expiry — Early Warning", val: "90 days before", channel: "In-App + Email" },
+              { label: "COE Expiry — Urgent Warning", val: "30 days before", channel: "In-App + Email" },
+              { label: "Booking Starting Today", val: "Day of start", channel: "In-App" },
+              { label: "Rental Ending Today", val: "Day of end", channel: "In-App" },
             ].map(n => (
               <div key={n.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
                 <div>
